@@ -1,5 +1,7 @@
 %Inicio de la base de datos de profesiones
 
+
+
 % profesion(nombre, [afinidades], [habilidades], [antagonias])
 profesion(ingenieria_computadores,
     [matematicas, tecnologia, resolver_problemas],
