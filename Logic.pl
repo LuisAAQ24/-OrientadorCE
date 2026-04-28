@@ -1,5 +1,6 @@
 :- dynamic gusta/1.
 :- dynamic no_gusta/1.
+:- dynamic candidata/1.
 
 :- consult('BD.pl').
 :- consult('BNF.pl').
@@ -29,57 +30,89 @@ guardar(no_gusta(X)) :-
     write('Entiendo que no te gusta '), write(X), nl.
 
 
-recomendar(Carrera) :-
-    profesion(Carrera, Afinidades, _, Defectos),
-    sigustos(Afinidades),
-    nodefectos(Defectos).
 
-sigustos([]).
-sigustos([H|T]) :-
-    gusta(H),
-    sigustos(T).
-
-nodefectos([]).
-nodefectos([H|T]) :-
-    \+ no_gusta(H),
-    nodefectos(T).
+inicializar_candidatas :-
+    retractall(candidata(_)),
+    forall(profesion(C, _, _, _), assertz(candidata(C))).
 
 
-iniciar :-
-    limpiar_datos,
-    write('Hola! Dime que te gusta'), nl,
-    conversacion.
+filtrar :-
+    forall(
+        candidata(C),
+        (
+            profesion(C, Afinidades, _, Defectos),
+            (
+                (member(X, Defectos), gusta(X)) ;
+                (member(X, Afinidades), no_gusta(X))
+            )
+            ->
+                retract(candidata(C))
+            ;
+                true
+        )
+    ).
 
-conversacion :-
+
+tema_relevante(Tema) :-
+    candidata(C),
+    profesion(C, Afinidades, _, _),
+    member(Tema, Afinidades).
+
+
+preguntar_dinamico :-
+    tema_relevante(Tema),
+    \+ gusta(Tema),
+    \+ no_gusta(Tema),
+    write('Te gusta '), write(Tema), write('?'), nl,
     leer_entrada(Input),
     procesar(Input),
+    !.
 
-    preguntar(tecnologia, 'Te gusta la tecnologia?'),
-    preguntar(personas, 'Te gustan las personas?'),
-    preguntar(resolver_problemas, 'Te gusta resolver problemas?'),
-
-    mostrar_recomendacion.
+preguntar_dinamico.
 
 
-preguntar(Tema, Pregunta) :-
-    (gusta(Tema) ; no_gusta(Tema)) ->
-        true ;  % ya lo sabe → no pregunta
-    (
-        write(Pregunta), nl,
-        leer_entrada(Input),
-        procesar(Input)
-    ).
+contar_candidatas(N) :-
+    findall(C, candidata(C), Lista),
+    length(Lista, N).
+
+
+mostrar_resultado :-
+    findall(C, candidata(C), Lista),
+    Lista \= [],
+    write('Dadas tus preferencias te recomiendo:'), nl,
+    mostrar_lista(Lista), !.
+
+mostrar_resultado :-
+    write('No encontre una carrera adecuada con tus respuestas.'), nl.
+
+mostrar_lista([]).
+mostrar_lista([H|T]) :-
+    write('- '), write(H), nl,
+    mostrar_lista(T).
 
 
 limpiar_datos :-
     retractall(gusta(_)),
-    retractall(no_gusta(_)).
+    retractall(no_gusta(_)),
+    retractall(candidata(_)).
 
 
-mostrar_recomendacion :-
-    recomendar(C),
-    write('Dadas tus preferencias te recomiendo estudiar: '),
-    write(C), nl, !.
+loop :-
+    filtrar,
+    contar_candidatas(N),
+    (
+        N =< 1 ->
+            mostrar_resultado
+        ;
+            preguntar_dinamico,
+            loop
+    ).
 
-mostrar_recomendacion :-
-    write('No encontre una carrera exacta con tus preferencias.'), nl.
+
+iniciar :-
+    limpiar_datos,
+    inicializar_candidatas,
+    write('Hola! Dime que te gusta'), nl,
+    leer_entrada(Input),
+    procesar(Input),
+    loop.
