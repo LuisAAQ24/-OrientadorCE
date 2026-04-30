@@ -49,14 +49,14 @@ guardar(no_gusta(Tema)) :-
     no_gusta(Tema).
 
 guardar(no_gusta(Tema)) :-
-    assertz(no_gusta(Tema)),
+    assertz(no_gusta(Tema)),% Agrega el hecho a la base de datos dinámica
     write('No te gusta '), write(Tema), nl.
 
 
 % Carga todas las carreras como candidatas
 inicializar_candidatas :-
     retractall(candidata(_)),
-    forall(profesion(Carrera, _, _, _),
+    forall(profesion(Carrera, _, _, _), %No se fija en detalles
            assertz(candidata(Carrera))).
 
 
@@ -65,7 +65,7 @@ inicializar_candidatas :-
 % Si le gusta algo que es defecto → eliminar
 filtrar :-
     candidata(Carrera),
-    profesion(Carrera, _, _, Defectos),
+    profesion(Carrera, _, _, Defectos), %No se fija en afinidades ni habilidades
     member(Tema, Defectos),
     gusta(Tema),
     retract(candidata(Carrera)),
@@ -74,7 +74,7 @@ filtrar :-
 % Si no le gusta algo necesario → eliminar
 filtrar :-
     candidata(Carrera),
-    profesion(Carrera, Afinidades, _, _),
+    profesion(Carrera, Afinidades, _, _), %No se fija en defectos ni habilidades
     member(Tema, Afinidades),
     no_gusta(Tema),
     retract(candidata(Carrera)),
@@ -94,7 +94,7 @@ tema_relevante(Tema) :-
 % Hace preguntas si falta información
 preguntar_dinamico :-
     tema_relevante(Tema),
-    \+ gusta(Tema),
+    \+ gusta(Tema), % Si no se sabe que le gusta, preguntar
     \+ no_gusta(Tema),
     write('Te gusta '), write(Tema), write('?'), nl,
     leer_entrada(Entrada),
@@ -107,14 +107,14 @@ preguntar_dinamico.
 
 % Cuenta cuántas carreras quedan
 contar_candidatas(Cantidad) :-
-    findall(C, candidata(C), Lista),
+    findall(C, candidata(C), Lista), % Encuentra todas las carreras candidatas y las pone en una lista
     length(Lista, Cantidad).
 
 
 % Muestra resultados
 mostrar_resultado :-
     findall(C, candidata(C), Lista),
-    Lista \= [],
+    Lista \= [], % Si la lista no está vacía, muestra las opciones
     write('Te recomiendo:'), nl,
     mostrar_lista(Lista).
 
@@ -125,7 +125,7 @@ mostrar_resultado :-
 
 % Imprime la lista
 mostrar_lista([]).
-mostrar_lista([Carrera|Resto]) :-
+mostrar_lista([Carrera|Resto]) :- % Imprime el primer elemento
     write('- '), write(Carrera), nl,
     mostrar_lista(Resto).
 
