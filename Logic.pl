@@ -1,14 +1,14 @@
-% Permite guardar datos durante la ejecución
+% permite guardar datos durante la ejecución
 :- dynamic gusta/1.
 :- dynamic no_gusta/1.
 :- dynamic candidata/1.
 
-% Carga las bases externas
+% carga las bases externas
 :- consult('BD.pl').
 :- consult('BNF.pl').
 
 
-% Inicia el programa
+% inicia el programa
 iniciar :-
     limpiar_datos,
     inicializar_candidatas,
@@ -18,7 +18,7 @@ iniciar :-
     loop.
 
 
-% Lee el texto y lo convierte en lista de palabras
+% lee el texto y lo convierte en lista de palabras
 leer_entrada(ListaPalabras) :-
     read_line_to_string(user_input, Texto),
     string_lower(Texto, TextoMinuscula),
@@ -26,17 +26,17 @@ leer_entrada(ListaPalabras) :-
     maplist(atom_string, ListaPalabras, PalabrasString).
 
 
-% Interpreta lo que escribe el usuario
+% interpreta lo que escribe el usuario
 procesar(Entrada) :-
     parsear(Entrada, Resultado),
     guardar(Resultado).
 
-% Si no entiende
+% si no entiende
 procesar(_) :-
     write('No entendi, puedes repetir?'), nl.
 
 
-% Guarda lo que le gusta
+% guarda lo que le gusta
 guardar(gusta(Tema)) :-
     gusta(Tema).
 
@@ -44,7 +44,7 @@ guardar(gusta(Tema)) :-
     assertz(gusta(Tema)),
     write('Te gusta '), write(Tema), nl.
 
-% Guarda lo que no le gusta
+% guarda lo que no le gusta
 guardar(no_gusta(Tema)) :-
     no_gusta(Tema).
 
@@ -53,16 +53,16 @@ guardar(no_gusta(Tema)) :-
     write('No te gusta '), write(Tema), nl.
 
 
-% Carga todas las carreras como candidatas
+% carga todas las carreras como candidatas
 inicializar_candidatas :-
     retractall(candidata(_)),
     forall(profesion(Carrera, _, _, _), %No se fija en detalles
            assertz(candidata(Carrera))).
 
 
-% Elimina carreras según preferencias
+% elimina carreras según preferencias
 
-% Si le gusta algo que es defecto → eliminar
+% si le gusta algo que es defecto eliminar
 filtrar :-
     candidata(Carrera),
     profesion(Carrera, _, _, Defectos), %No se fija en afinidades ni habilidades
@@ -71,7 +71,7 @@ filtrar :-
     retract(candidata(Carrera)),
     fail.
 
-% Si no le gusta algo necesario → eliminar
+% si no le gusta algo necesario eliminar
 filtrar :-
     candidata(Carrera),
     profesion(Carrera, Afinidades, _, _), %No se fija en defectos ni habilidades
@@ -80,18 +80,26 @@ filtrar :-
     retract(candidata(Carrera)),
     fail.
 
-% Fin del filtrado
+% fin del filtrado
 filtrar.
 
 
-% Busca temas importantes de las carreras
+% busca temas importantes de las carreras
 tema_relevante(Tema) :-
     candidata(Carrera),
     profesion(Carrera, Afinidades, _, _),
     member(Tema, Afinidades).
 
 
-% Hace preguntas si falta información
+% verifica si aun quedan temas relevantes que no se han preguntado
+% es decir, existe un tema que no esta ni en gusta ni en no_gusta
+hay_preguntas_pendientes :-
+    tema_relevante(Tema),
+    \+ gusta(Tema),
+    \+ no_gusta(Tema).
+
+
+% hace preguntas si falta información
 preguntar_dinamico :-
     tema_relevante(Tema),
     \+ gusta(Tema), % Si no se sabe que le gusta, preguntar
@@ -101,54 +109,62 @@ preguntar_dinamico :-
     procesar(Entrada),
     !.
 
-% Si no hay preguntas
+% si no hay preguntas
 preguntar_dinamico.
 
 
-% Cuenta cuántas carreras quedan
+% cuenta cuántas carreras quedan
 contar_candidatas(Cantidad) :-
     findall(C, candidata(C), Lista), % Encuentra todas las carreras candidatas y las pone en una lista
     length(Lista, Cantidad).
 
 
-% Muestra resultados
+% muestra resultados
 mostrar_resultado :-
     findall(C, candidata(C), Lista),
     Lista \= [], % Si la lista no está vacía, muestra las opciones
     write('Te recomiendo:'), nl,
     mostrar_lista(Lista).
 
-% Si no hay opciones
+% si no hay opciones
 mostrar_resultado :-
     write('No encontre una carrera adecuada'), nl.
 
 
-% Imprime la lista
+% imprime la lista
 mostrar_lista([]).
 mostrar_lista([Carrera|Resto]) :- % Imprime el primer elemento
     write('- '), write(Carrera), nl,
     mostrar_lista(Resto).
 
 
-% Borra toda la memoria
+% borra toda la memoria
 limpiar_datos :-
     retractall(gusta(_)),
     retractall(no_gusta(_)),
     retractall(candidata(_)).
 
 
-% Ciclo principal
+% ciclo principal
 loop :-
     filtrar,
     contar_candidatas(Cantidad),
     decidir(Cantidad).
 
 
-% Decide si termina o sigue preguntando
+% decide si termina o sigue preguntando
+
+% si queda una o ninguna carrera termina
 decidir(Cantidad) :-
     Cantidad =< 1,
     mostrar_resultado.
 
+% si ya no hay nada nuevo que preguntar termina aunque haya varias
+decidir(_) :-
+    \+ hay_preguntas_pendientes,
+    mostrar_resultado.
+
+% si aun hay varias opciones y preguntas pendientes sigue preguntando
 decidir(Cantidad) :-
     Cantidad > 1,
     preguntar_dinamico,
